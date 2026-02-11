@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import joblib
 import numpy as np
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from . import schemas
