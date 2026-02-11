@@ -1,10 +1,7 @@
-from typing import Generator
-
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session
 
-from app.db import Base, DATABASE_URL, Prediction
+from app.db import Base, DATABASE_URL
 from app.main import app
 
 
@@ -162,4 +159,3 @@ def test_get_prediction_not_found():
     assert resp.status_code == 404
     data = resp.json()
     assert data["detail"] == "Prediction not found"
-

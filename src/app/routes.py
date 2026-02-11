@@ -191,15 +191,10 @@ def get_prediction(
     prediction_id: int,
     db: Annotated[Session, Depends(get_db)] = None,
 ):
-    record = (
-        db.query(Prediction)
-        .filter(Prediction.id == prediction_id)
-        .first()
-    )
+    record = db.query(Prediction).filter(Prediction.id == prediction_id).first()
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Prediction not found",
         )
     return record
-

@@ -37,4 +37,3 @@ class PredictionRecord(BaseModel):
 class PredictionListResponse(BaseModel):
     items: List[PredictionRecord]
     total: int
-

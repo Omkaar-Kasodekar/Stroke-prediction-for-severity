@@ -18,4 +18,3 @@ SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     # Prepend so that `app` is resolved from `src/app`
     sys.path.insert(0, str(SRC_DIR))
-
