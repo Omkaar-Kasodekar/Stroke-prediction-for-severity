@@ -8,6 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Use SQLite for tests in CI so we don't depend on an external
+      # PostgreSQL service on the GitHub runner.
+      DATABASE_URL: sqlite:///./test.db
 
     steps:
       - name: Checkout repository

@@ -16,7 +16,9 @@ def _reset_db() -> None:
     """Truncate predictions table between tests to get deterministic results."""
     engine = _get_engine()
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE TABLE predictions RESTART IDENTITY;"))
+        # Use a cross-database friendly statement so this works on both
+        # PostgreSQL and SQLite in CI/local test environments.
+        conn.execute(text("DELETE FROM predictions;"))
 
 
 def setup_function() -> None:
