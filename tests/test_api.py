@@ -3,7 +3,6 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 import numpy as np
-import app.routes as routes
 
 from app.db import Base, DATABASE_URL, init_db, get_db
 from app.routes import _normalize_severity, SimpleFallbackModel
