@@ -52,4 +52,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: myusername/myimage:latest
+          tags: nagaraj021530/stroke-prediction-for-severity:latest
