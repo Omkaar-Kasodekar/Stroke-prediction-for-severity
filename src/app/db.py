@@ -1,6 +1,7 @@
+# FILE: src/app/db.py
+
 import os
 from datetime import datetime
-
 from sqlalchemy import (
     Column,
     DateTime,
@@ -13,26 +14,16 @@ from sqlalchemy import (
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
-# Prefer a generic DATABASE_URL environment variable so that tests/CI
-# can easily switch to SQLite without requiring a running PostgreSQL instance.
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    # Default to PostgreSQL configuration (e.g. for local/dev or production)
-    POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
-    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-    POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-    POSTGRES_DB = os.getenv("POSTGRES_DB", "stroke_cds")
-
-    DATABASE_URL = (
-        f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
-        f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-    )
-
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 
 engine = create_engine(DATABASE_URL, echo=False, future=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+    future=True,
+)
 
 Base = declarative_base()
 
@@ -48,11 +39,11 @@ class Prediction(Base):
     heart_disease = Column(SmallInteger, nullable=False)
     severity = Column(String(32), nullable=False)
     model = Column(String(64), nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False,
+                        default=datetime.utcnow)
 
 
 def init_db() -> None:
-    """Create database tables if they do not exist."""
     Base.metadata.create_all(bind=engine)
 
 

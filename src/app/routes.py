@@ -1,3 +1,5 @@
+# FILE: src/app/routes.py
+
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -29,8 +31,6 @@ gradient_boosting_model = _load_model(GB_MODEL_PATH)
 
 
 class SimpleFallbackModel:
-    """Very simple rule-based model used if joblib models are missing."""
-
     classes_ = np.array(["mild", "moderate", "severe"])
 
     def predict(self, X: np.ndarray):
@@ -81,8 +81,6 @@ SEVERITY_LABELS = {
 
 
 def _normalize_severity(value: object) -> str:
-    """Normalize model outputs (ints/strings) to canonical severity labels."""
-
     return SEVERITY_LABELS.get(value, str(value))
 
 
@@ -99,40 +97,22 @@ else:
 
 @router.get("/health")
 def health_check():
-    """Simple health endpoint used by Swagger/UI and external checks.
-
-    It is implemented defensively to avoid leaking internal errors as 500s.
-    """
-
     try:
         model_name = str(ACTIVE_MODEL_NAME)
     except Exception:
-        # In an unexpected edge case, fall back to a generic label rather than raising.
         model_name = "unknown"
-
     return {"status": "ok", "model": model_name}
 
 
-@router.post(
-    "/predict",
-    response_model=schemas.PredictionResponse,
-    status_code=status.HTTP_200_OK,
-)
-def predict(
-    payload: schemas.PredictionRequest,
-    db: Annotated[Session, Depends(get_db)],
-):
-    features = np.array(
-        [
-            [
-                payload.age,
-                payload.bmi,
-                payload.avg_glucose_level,
-                payload.hypertension,
-                payload.heart_disease,
-            ]
-        ]
-    )
+@router.post("/predict", response_model=schemas.PredictionResponse)
+def predict(payload: schemas.PredictionRequest,
+            db: Annotated[Session, Depends(get_db)]):
+
+    features = np.array([[payload.age,
+                          payload.bmi,
+                          payload.avg_glucose_level,
+                          payload.hypertension,
+                          payload.heart_disease]])
 
     raw_pred = ACTIVE_MODEL.predict(features)[0]
     severity = _normalize_severity(raw_pred)
@@ -156,6 +136,7 @@ def predict(
         severity=severity,
         model=ACTIVE_MODEL_NAME,
     )
+
     db.add(record)
     db.commit()
     db.refresh(record)
@@ -168,33 +149,27 @@ def predict(
     )
 
 
-@router.get(
-    "/predictions",
-    response_model=schemas.PredictionListResponse,
-)
-def list_predictions(
-    limit: int = 50,
-    offset: int = 0,
-    db: Annotated[Session, Depends(get_db)] = None,
-):
+@router.get("/predictions", response_model=schemas.PredictionListResponse)
+def list_predictions(limit: int = 50,
+                     offset: int = 0,
+                     db: Annotated[Session, Depends(get_db)] = None):
+
     query = db.query(Prediction).order_by(Prediction.created_at.desc())
     total = query.count()
     items = query.offset(offset).limit(limit).all()
     return schemas.PredictionListResponse(items=items, total=total)
 
 
-@router.get(
-    "/predictions/{prediction_id}",
-    response_model=schemas.PredictionRecord,
-)
-def get_prediction(
-    prediction_id: int,
-    db: Annotated[Session, Depends(get_db)] = None,
-):
-    record = db.query(Prediction).filter(Prediction.id == prediction_id).first()
+@router.get("/predictions/{prediction_id}",
+            response_model=schemas.PredictionRecord)
+def get_prediction(prediction_id: int,
+                   db: Annotated[Session, Depends(get_db)] = None):
+
+    record = db.query(Prediction)\
+               .filter(Prediction.id == prediction_id)\
+               .first()
+
     if not record:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Prediction not found",
-        )
+        raise HTTPException(status_code=404,
+                            detail="Prediction not found")
     return record
