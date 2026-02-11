@@ -2,78 +2,50 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: stroke_cds
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    env:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: stroke_cds
-
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
+
+      - name: Install Poetry
+        run: pip install poetry
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: poetry install
 
-      - name: Wait for PostgreSQL
-        run: |
-          python - << 'PY'
-          import time
-          import socket
+      - name: Lint with Ruff
+        run: poetry run ruff check .
 
-          host = "localhost"
-          port = 5432
-          for _ in range(30):
-              try:
-                  with socket.create_connection((host, port), timeout=2):
-                      print("PostgreSQL is up")
-                      break
-              except OSError:
-                  print("Waiting for PostgreSQL...")
-                  time.sleep(2)
-          else:
-              raise SystemExit("PostgreSQL did not become available in time")
-          PY
+      - name: Security scan with Bandit
+        run: poetry run bandit -r src -q
 
-      - name: Create predictions table
-        run: |
-          python - << 'PY'
-          from app.db import init_db
-          init_db()
-          PY
+      - name: Run tests with coverage (minimum 80%)
+        run: poetry run pytest --cov=src --cov-report=term-missing --cov-fail-under=80
 
-      - name: Run tests
-        run: |
-          pytest
+      # Docker Login (only on main)
+      - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Build and Push Docker Image
+      - name: Build and Push Docker Image
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: myusername/myimage:latest
